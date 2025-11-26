@@ -54,7 +54,6 @@ class HapticFeedbackPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         if (call.method == "canVibrate") {
             canVibrate(result)
         } else {
-
             val view: View? = activity?.window?.decorView
             if (view == null) {
                 result.error("NO_VIEW", "No view available", null)
@@ -62,18 +61,35 @@ class HapticFeedbackPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             }
             if (call.method == "success") {
                 if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                    result.success(null)
-                    return
+                    if (view.isHapticFeedbackEnabled()) {
+                        val played = view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+                        if (played) {
+                            // If not played, will fallback
+                            result.success(null)
+                            return
+                        }
+                    } else {
+                        // Don't play anything. Haptics are disabled
+                        result.success(null)
+                        return
+                    }
                 }
             } else if (call.method == "error") {
                 if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    view.performHapticFeedback(HapticFeedbackConstants.REJECT)
-                    result.success(null)
-                    return
+                    if (view.isHapticFeedbackEnabled()) {
+                        val played = view.performHapticFeedback(HapticFeedbackConstants.REJECT)
+                        if (played) {
+                            // If not played, will fallback
+                            result.success(null)
+                            return
+                        }
+                    } else {
+                        // Don't play anything. Haptics are disabled
+                        result.success(null)
+                        return
+                    }
                 }
             }
-
             val pattern = Pattern.values().find { it.name == call.method }
             if (pattern != null) {
                 val usage = Usage.fromArguments(call.arguments)
