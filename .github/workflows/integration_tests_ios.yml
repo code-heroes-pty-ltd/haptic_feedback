@@ -1,0 +1,55 @@
+name: Integration Tests (iOS)
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration_test_ios:
+    name: iOS ${{ matrix.os-version }} - ${{ matrix.model }}
+    runs-on: macos-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # https://github.com/futureware-tech/simulator-action/wiki/Devices-macos-latest
+        os-version: ['26.0']
+        model: ['iPhone 16']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Disable analytics
+        run: flutter config --no-analytics
+
+      - name: Flutter pub get
+        run: |
+          flutter pub get
+          cd example
+          flutter pub get
+
+      - name: Boot iOS simulator
+        id: boot_simulator
+        uses: futureware-tech/simulator-action@v4
+        with:
+          os_version: ${{ matrix.os-version }}
+          model: ${{ matrix.model }}
+
+      - name: Run integration tests on iOS
+        run: |
+          cd example
+          flutter test integration_test -d "${{ steps.boot_simulator.outputs.udid }}"
